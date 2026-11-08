@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - "esscanner-bundle.zip"
+      - ".github/workflows/unzip-bundle.yml"
 
 permissions:
   contents: write
+  workflows: write
 
 jobs:
   unzip:
