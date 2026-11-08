@@ -1,0 +1,31 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+
+# Swift Package Manager (no packages today; safe defaults)
+.build/
+Package.resolved
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors / local tooling
+.idea/
+*.swp
+*~
+
+# CI artifacts produced locally
+artifacts/
+ESScanner-unsigned.ipa
