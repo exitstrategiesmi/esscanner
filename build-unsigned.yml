@@ -1,0 +1,82 @@
+# Build the ESScanner shell as an UNSIGNED .ipa.
+#
+# This is the verified $0 route (see
+# ~/workspace/estimator-dev/research/MAC-FREE-BUILD-ROUTES-2026-11-07.md):
+#
+#   GitHub Actions macOS runner builds the app with code signing OFF
+#   -> the .ipa artifact is downloaded -> SideStore on the iPhone
+#   re-signs it with the owner's free Apple ID and keeps the 7-day
+#   free-provisioning signature refreshed over Wi-Fi.
+#
+# Repository layout expected: THIS folder (native-companion/) is the
+# repository root, so ESScanner.xcodeproj sits at the root.
+#
+# Cost: $0. Public repos get free standard macOS runners; a private
+# repo on GitHub Free includes ~$12/mo of compute and macOS minutes
+# bill at $0.062/min — this build takes roughly 5-15 minutes.
+#
+# The workflow builds with `-scheme ESScanner` (the shared scheme
+# ships in ESScanner.xcodeproj/xcshareddata). xcodebuild REQUIRES
+# -scheme whenever -derivedDataPath is passed — build run #1
+# (2026-11-08) failed with exactly that error when -target was used.
+
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ESScanner/**"
+      - "ESScanner.xcodeproj/**"
+      - ".github/workflows/build-unsigned.yml"
+
+jobs:
+  build:
+    name: Build unsigned .ipa
+    # Pinned to the macOS 15 image (Xcode 16.x default toolchain),
+    # which fully supports the iOS 17 deployment target. If GitHub
+    # retires this image, move to macos-latest / macos-26.
+    runs-on: macos-15
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v5
+
+      - name: Show the toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build (code signing disabled)
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project ESScanner.xcodeproj \
+            -scheme ESScanner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/build/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tee build/build.log
+
+      - name: Package the unsigned .ipa
+        run: |
+          set -euo pipefail
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/ESScanner.app"
+          test -d "$APP_PATH"
+          rm -rf Payload ESScanner-unsigned.ipa
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry ESScanner-unsigned.ipa Payload
+          ls -lh ESScanner-unsigned.ipa
+
+      - name: Upload the .ipa artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ESScanner-unsigned-ipa
+          path: ESScanner-unsigned.ipa
+          retention-days: 14
